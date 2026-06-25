@@ -1,0 +1,112 @@
+---
+title: "Estimating 5-year lung cancer risk with LLPv3"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Estimating 5-year lung cancer risk with LLPv3}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
+library(LLPv3)
+```
+
+## What this package does
+
+`LLPv3` implements version 3 of the Liverpool Lung Project risk model
+(Field et al., *Thorax* 2021). Given a person's age, sex, smoking duration,
+family history of lung cancer, prior pneumonia, asbestos exposure, and prior
+(non-lung) cancer, it returns the **5-year probability of lung cancer**.
+
+It reproduces the official Liverpool calculator exactly. Two interfaces are
+provided: the vectorised `llpv3()` function and the ModelsCloud prediction API
+(`model_run()` / `get_sample_input()` / `get_default_input()`).
+
+## Scoring one person
+
+```{r}
+llpv3(age = 65, sex = "male", smoking_duration = 45,
+      family_hist_lung_cancer = 0, pneumonia = 1,
+      asbestos = 0, prior_cancer = 0)
+```
+
+Additional risk factors increase the estimate:
+
+```{r}
+llpv3(age = 72, sex = "male", smoking_duration = 55,
+      family_hist_lung_cancer = 1, pneumonia = 1,
+      asbestos = 1, prior_cancer = 1)
+```
+
+## How the score is built
+
+The linear predictor is an age/sex baseline plus a sum of risk-factor log-odds.
+Two effects worth noting:
+
+* **Smoking duration** enters in bands (1–19, 20–39, 40–59, ≥60 years), not
+  per-year. A never-smoker (`smoking_duration = 0`) contributes nothing from
+  smoking.
+* **Family history** distinguishes *early* onset (a relative diagnosed before
+  60) from *late* onset (≥60). Early onset carries a larger coefficient.
+
+```{r}
+# Same person, varying only family history
+fh <- c(none = 0, early = 1, late = 2)
+vapply(fh, function(f)
+  llpv3(age = 65, sex = "female", smoking_duration = 40,
+        family_hist_lung_cancer = f, pneumonia = 0,
+        asbestos = 0, prior_cancer = 0),
+  numeric(1))
+```
+
+## Scoring a cohort
+
+```{r}
+cohort <- data.frame(
+  age              = c(58, 64, 72),
+  sex              = c("male", "female", "male"),
+  smoking_duration = c(30, 44, 55),
+  fam              = c(0, 1, 2),
+  pneumonia        = c(0, 1, 1),
+  asbestos         = c(0, 0, 1),
+  prior_cancer     = c(0, 0, 1)
+)
+cohort$risk <- llpv3(
+  age = cohort$age, sex = cohort$sex,
+  smoking_duration = cohort$smoking_duration,
+  family_hist_lung_cancer = cohort$fam,
+  pneumonia = cohort$pneumonia, asbestos = cohort$asbestos,
+  prior_cancer = cohort$prior_cancer
+)
+cohort[, c("age", "sex", "risk")]
+```
+
+## Using the ModelsCloud API
+
+```{r}
+get_default_input()
+
+person <- get_default_input()
+person$age <- 70
+person$smoking_duration <- 50
+model_run(person)
+```
+
+```{r}
+model_run(get_sample_input())
+```
+
+## Caveats
+
+* Developed in a Caucasian population; intended for ages 50–79.
+* For research use only; differs from LLPv2 used in UK screening programmes.
+* Risk is a probability — eligibility thresholds are a separate decision and are
+  not applied here.
+
+## Reference
+
+Field JK, Vulkan D, Davies MPA, Duffy SW, Gabe R. Liverpool Lung Project lung
+cancer risk stratification model: calibration and prospective validation.
+*Thorax.* 2021;76(2):161–168.
+doi:[10.1136/thoraxjnl-2020-215158](https://doi.org/10.1136/thoraxjnl-2020-215158)

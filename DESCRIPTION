@@ -1,0 +1,33 @@
+Package: LLPv3
+Title: Liverpool Lung Project (LLPv3) Lung Cancer Risk Model for ModelsCloud
+Version: 0.1.0
+Authors@R: c(
+    person("Ramin", "Rezaeianzadeh", email = "raminrzn@student.ubc.ca",
+           role = c("aut", "cre")),
+    person("John K.", "Field", role = "ctb",
+           comment = "Author of the original Liverpool Lung Project model"))
+Description: A self-contained, dependency-free implementation of version 3 of the
+    Liverpool Lung Project (LLPv3) risk model, which predicts the 5-year
+    probability of lung cancer from age, sex, smoking duration, family history
+    of lung cancer, prior pneumonia, asbestos exposure, and prior (non-lung)
+    cancer (Field et al., Thorax, 2021, <doi:10.1136/thoraxjnl-2020-215158>).
+    The age- and sex-specific baseline and the risk-factor coefficients were
+    taken from the official Liverpool calculator and verified to reproduce it
+    exactly. The package exposes both the vectorised model function llpv3() and
+    the standard ModelsCloud prediction API (model_run(), get_sample_input(),
+    get_default_input()) for interactive use in R or deployment as a hosted
+    model on the ModelsCloud platform.
+License: GPL-3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    utils
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+URL: https://github.com/raminrzn/LLPv3
+BugReports: https://github.com/raminrzn/LLPv3/issues
