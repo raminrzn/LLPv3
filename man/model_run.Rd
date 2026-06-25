@@ -4,14 +4,17 @@
 \alias{model_run}
 \title{Run the LLPv3 model (ModelsCloud entry point)}
 \usage{
-model_run(model_input = NULL)
+model_run(model_input = NULL, ...)
 }
 \arguments{
 \item{model_input}{A named list (one person) or data frame (one row per
 person) whose columns are the LLPv3 predictors. See \code{\link[=llpv3]{llpv3()}} for the
 meaning and coding of each field, or call \code{\link[=get_sample_input]{get_sample_input()}} /
-\code{\link[=get_default_input]{get_default_input()}} for ready-made examples. If \code{NULL}, the model's
-\code{\link[=get_default_input]{get_default_input()}} is used.}
+\code{\link[=get_default_input]{get_default_input()}} for ready-made examples. If \code{NULL} and no fields are
+supplied via \code{...}, the model's \code{\link[=get_default_input]{get_default_input()}} is used.}
+
+\item{...}{Alternative to \code{model_input}: the predictor fields supplied
+directly as named arguments (e.g. from an unwrapped API call).}
 }
 \value{
 A data frame: the input columns plus \code{risk} (5-year probability in
@@ -21,9 +24,22 @@ A data frame: the input columns plus \code{risk} (5-year probability in
 Scores one or more people and returns the input augmented with the predicted
 5-year lung cancer risk.
 }
+\details{
+Inputs may arrive either \strong{wrapped} under \code{model_input}
+(\code{model_run(model_input = list(age = 65, ...))} or a data frame) or
+\strong{unwrapped} as direct named arguments (\code{model_run(age = 65, ...)}, the form
+produced by a raw \code{do.call(model_run, funcInput)}). Common aliases are mapped
+to canonical names (\code{gender}/\code{female} -> \code{sex}, \code{smkyears} ->
+\code{smoking_duration}, \code{famhx} -> \code{family_hist_lung_cancer}, \code{pneu} ->
+\code{pneumonia}, \code{asb} -> \code{asbestos}, \code{phist} -> \code{prior_cancer}). Unrecognised
+extra fields are ignored.
+}
 \examples{
 model_run(get_sample_input())
 model_run(get_default_input())
+# Unwrapped + aliases:
+model_run(age = 65, gender = "male", smkyears = 45, famhx = 0, pneu = 1,
+          asb = 0, phist = 0)
 }
 \seealso{
 \code{\link[=llpv3]{llpv3()}}, \code{\link[=get_sample_input]{get_sample_input()}}, \code{\link[=get_default_input]{get_default_input()}}

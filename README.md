@@ -116,6 +116,29 @@ connect_to_model("raminrzn/llpv3", access_key = "YOUR_API_KEY")
 result <- model_run(get_sample_input())
 ```
 
+**Flexible input.** `model_run()` accepts fields **wrapped** under `model_input`
+or passed as **top-level** named arguments, and understands common aliases:
+`gender`/`female`→`sex` (`female` keeps the 0=male/1=female coding),
+`smkyears`→`smoking_duration`, `famhx`→`family_hist_lung_cancer`,
+`pneu`→`pneumonia`, `asb`→`asbestos`, `phist`→`prior_cancer`. Unknown extra
+fields are ignored.
+
+### Raw HTTP
+
+ModelsCloud runs `do.call(model_run, funcInput)`, so wrap fields under
+`model_input`:
+
+```bash
+curl -X POST https://core.modelscloud.resp.core.ubc.ca/call/<ns>/llpv3 \
+  -H "Authorization: Bearer <ACCESS_KEY_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"funcInput": {"model_input": {
+        "age": 65, "sex": "male", "smoking_duration": 45,
+        "family_hist_lung_cancer": 0, "pneumonia": 1, "asbestos": 0,
+        "prior_cancer": 0
+      }}}'
+```
+
 ---
 
 ## Scope & caveats

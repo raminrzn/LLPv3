@@ -12,16 +12,59 @@
   "pneumonia", "asbestos", "prior_cancer"
 )
 
+# Accepted aliases (alias -> canonical), so common payloads work as-is.
+# `female` maps to `sex` and shares its 0 = male / 1 = female coding.
+.llpv3_alias <- c(
+  gender = "sex", female = "sex",
+  smkyears = "smoking_duration", smoking_years = "smoking_duration",
+  duration_smoking = "smoking_duration", duration = "smoking_duration",
+  famhx = "family_hist_lung_cancer", fam_hist = "family_hist_lung_cancer",
+  family_history = "family_hist_lung_cancer",
+  pneu = "pneumonia",
+  asb = "asbestos",
+  phist = "prior_cancer", prevcancer = "prior_cancer",
+  prev_cancer = "prior_cancer", cancer_history = "prior_cancer"
+)
+
+# Normalise an incoming payload: accept either a wrapped `model_input` object or
+# fields passed directly as named arguments (`dots`); rename known aliases to
+# canonical names; drop unrecognised extra fields. Returns NULL when no input at
+# all was supplied.
+.llpv3_normalize <- function(model_input, dots) {
+  if (is.null(model_input)) {
+    if (length(dots) == 0) return(NULL)
+    model_input <- dots
+  }
+  df <- as.data.frame(model_input, stringsAsFactors = FALSE)
+  for (a in intersect(names(df), names(.llpv3_alias))) {
+    canon <- .llpv3_alias[[a]]
+    if (!canon %in% names(df)) names(df)[match(a, names(df))] <- canon
+  }
+  df[, intersect(names(df), .llpv3_vars), drop = FALSE]
+}
+
 #' Run the LLPv3 model (ModelsCloud entry point)
 #'
 #' Scores one or more people and returns the input augmented with the predicted
 #' 5-year lung cancer risk.
 #'
+#' @details
+#' Inputs may arrive either **wrapped** under `model_input`
+#' (`model_run(model_input = list(age = 65, ...))` or a data frame) or
+#' **unwrapped** as direct named arguments (`model_run(age = 65, ...)`, the form
+#' produced by a raw `do.call(model_run, funcInput)`). Common aliases are mapped
+#' to canonical names (`gender`/`female` -> `sex`, `smkyears` ->
+#' `smoking_duration`, `famhx` -> `family_hist_lung_cancer`, `pneu` ->
+#' `pneumonia`, `asb` -> `asbestos`, `phist` -> `prior_cancer`). Unrecognised
+#' extra fields are ignored.
+#'
 #' @param model_input A named list (one person) or data frame (one row per
 #'   person) whose columns are the LLPv3 predictors. See [llpv3()] for the
 #'   meaning and coding of each field, or call [get_sample_input()] /
-#'   [get_default_input()] for ready-made examples. If `NULL`, the model's
-#'   [get_default_input()] is used.
+#'   [get_default_input()] for ready-made examples. If `NULL` and no fields are
+#'   supplied via `...`, the model's [get_default_input()] is used.
+#' @param ... Alternative to `model_input`: the predictor fields supplied
+#'   directly as named arguments (e.g. from an unwrapped API call).
 #'
 #' @return A data frame: the input columns plus `risk` (5-year probability in
 #'   `[0, 1]`) and `risk_percent` (percentage, rounded to two decimals).
@@ -30,21 +73,18 @@
 #' @examples
 #' model_run(get_sample_input())
 #' model_run(get_default_input())
+#' # Unwrapped + aliases:
+#' model_run(age = 65, gender = "male", smkyears = 45, famhx = 0, pneu = 1,
+#'           asb = 0, phist = 0)
 #' @export
-model_run <- function(model_input = NULL) {
-  if (is.null(model_input)) model_input <- get_default_input()
-
-  unknown <- setdiff(names(model_input), .llpv3_vars)
-  if (length(unknown) > 0) {
-    stop("Unknown input variable(s): ", paste(unknown, collapse = ", "),
-         ". Accepted: ", paste(.llpv3_vars, collapse = ", "), call. = FALSE)
-  }
-
-  df <- as.data.frame(model_input, stringsAsFactors = FALSE)
+model_run <- function(model_input = NULL, ...) {
+  df <- .llpv3_normalize(model_input, list(...))
+  if (is.null(df)) df <- as.data.frame(get_default_input(), stringsAsFactors = FALSE)
 
   missing <- setdiff(.llpv3_vars, names(df))
   if (length(missing) > 0) {
     stop("Missing required variable(s): ", paste(missing, collapse = ", "),
+         ". Accepted names (incl. aliases) are documented in ?model_run.",
          call. = FALSE)
   }
 
